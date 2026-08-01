@@ -2,36 +2,35 @@ import streamlit as st
 import requests
 from PIL import Image
 
-# Hugging Face API setup
-HF_TOKEN = "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"
-API_URL = "https://api-inference.huggingface.co/models/gpt2"  # you can swap with another text model
-
+HF_TOKEN = st.secrets["HF_TOKEN"]  # safer storage
+API_URL = "https://api-inference.huggingface.co/models/gpt2"
 headers = {"Authorization": f"Bearer {HF_TOKEN}"}
 
 def query(payload):
-    response = requests.post(API_URL, headers=headers, json=payload)
-    return response.json()
+    try:
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        return {"error": str(e)}
 
-st.set_page_config(page_title="AI Photography Prompt Generator")
 st.title("📸 AI Photography Prompt Generator")
 
-# Upload reference image
-ref_image = st.file_uploader("Upload Reference Image", type=["jpg", "jpeg", "png"])
-
+ref_image = st.file_uploader("Upload Reference Image", type=["jpg","jpeg","png"])
 subject = st.text_input("Subject", "tamarind tree in sunset")
-lighting = st.selectbox("Lighting", ["Golden Hour", "Studio Light", "Neon Glow", "Natural Daylight"])
-lens = st.selectbox("Lens", ["35mm Wide", "50mm Standard", "85mm Portrait", "Macro"])
-composition = st.radio("Composition", ["Portrait", "Landscape", "Close-up", "Aerial"])
-style = st.multiselect("Style Filters", ["Cinematic", "Vintage", "HDR", "Monochrome"])
+lighting = st.selectbox("Lighting", ["Golden Hour","Studio Light","Neon Glow","Natural Daylight"])
+lens = st.selectbox("Lens", ["35mm Wide","50mm Standard","85mm Portrait","Macro"])
+composition = st.radio("Composition", ["Portrait","Landscape","Close-up","Aerial"])
+style = st.multiselect("Style Filters", ["Cinematic","Vintage","HDR","Monochrome"])
 
 if st.button("Generate AI Prompt"):
     user_input = f"Create a DSLR-style photography prompt. Subject: {subject}, Lighting: {lighting}, Lens: {lens}, Composition: {composition}, Style: {', '.join(style)}."
-    
     output = query({"inputs": user_input})
-    
-    # Hugging Face returns text in 'generated_text'
+
     if isinstance(output, list) and "generated_text" in output[0]:
         ai_prompt = output[0]["generated_text"]
+    elif "error" in output:
+        ai_prompt = f"⚠️ API Error: {output['error']}"
     else:
         ai_prompt = str(output)
 
@@ -41,4 +40,3 @@ if st.button("Generate AI Prompt"):
     if ref_image:
         image = Image.open(ref_image)
         st.image(image, caption="Reference Image", use_column_width=True)
-        st.info("This image can be used with the AI prompt in your generator.")
