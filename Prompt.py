@@ -1,4 +1,5 @@
 import streamlit as st
+from PIL import Image
 import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Photography Prompt Generator")
@@ -14,13 +15,18 @@ composition = st.radio("Composition", ["Portrait", "Landscape", "Close-up", "Aer
 style = st.multiselect("Style Filters", ["Cinematic", "Vintage", "HDR", "Monochrome"])
 
 if st.button("Generate Prompt"):
-    prompt = f"A {composition.lower()} shot of {subject}, captured with {lens}, under {lighting}, styled as {', '.join(style)}."
+    # Build prompt
+    style_text = ", ".join(style) if style else "natural"
+    prompt = f"A {composition.lower()} shot of {subject}, captured with {lens}, under {lighting}, styled as {style_text}."
+    
     st.success("Generated Prompt:")
     st.code(prompt)
 
-    if ref_image:
-        st.image(ref_image, caption="Reference Image", use_column_width=True)
-        st.info("This reference image will guide your AI generation.")
+    # Show uploaded reference image
+    if ref_image is not None:
+        image = Image.open(ref_image)
+        st.image(image, caption="Reference Image", use_column_width=True)
+        st.info("Use this image + prompt in your AI generator.")
 
     # Inspiration previews
     html_code = """
