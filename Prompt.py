@@ -1,9 +1,19 @@
 import streamlit as st
+import requests
 from PIL import Image
-import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Photography Prompt Generator")
-st.title("📸 Photography Prompt Generator")
+# Hugging Face API setup
+HF_TOKEN = "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"
+API_URL = "https://api-inference.huggingface.co/models/gpt2"  # you can swap with another text model
+
+headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+
+def query(payload):
+    response = requests.post(API_URL, headers=headers, json=payload)
+    return response.json()
+
+st.set_page_config(page_title="AI Photography Prompt Generator")
+st.title("📸 AI Photography Prompt Generator")
 
 # Upload reference image
 ref_image = st.file_uploader("Upload Reference Image", type=["jpg", "jpeg", "png"])
@@ -14,27 +24,21 @@ lens = st.selectbox("Lens", ["35mm Wide", "50mm Standard", "85mm Portrait", "Mac
 composition = st.radio("Composition", ["Portrait", "Landscape", "Close-up", "Aerial"])
 style = st.multiselect("Style Filters", ["Cinematic", "Vintage", "HDR", "Monochrome"])
 
-if st.button("Generate Prompt"):
-    # Build prompt
-    style_text = ", ".join(style) if style else "natural"
-    prompt = f"A {composition.lower()} shot of {subject}, captured with {lens}, under {lighting}, styled as {style_text}."
+if st.button("Generate AI Prompt"):
+    user_input = f"Create a DSLR-style photography prompt. Subject: {subject}, Lighting: {lighting}, Lens: {lens}, Composition: {composition}, Style: {', '.join(style)}."
     
-    st.success("Generated Prompt:")
-    st.code(prompt)
+    output = query({"inputs": user_input})
+    
+    # Hugging Face returns text in 'generated_text'
+    if isinstance(output, list) and "generated_text" in output[0]:
+        ai_prompt = output[0]["generated_text"]
+    else:
+        ai_prompt = str(output)
 
-    # Show uploaded reference image
-    if ref_image is not None:
+    st.success("AI‑Generated Prompt:")
+    st.code(ai_prompt)
+
+    if ref_image:
         image = Image.open(ref_image)
         st.image(image, caption="Reference Image", use_column_width=True)
-        st.info("Use this image + prompt in your AI generator.")
-
-    # Inspiration previews
-    html_code = """
-    <div style="display:flex;gap:10px;overflow-x:auto;">
-      <img src="https://source.unsplash.com/400x300/?cinematic,photography" width="200">
-      <img src="https://source.unsplash.com/400x300/?vintage,photography" width="200">
-      <img src="https://source.unsplash.com/400x300/?hdr,photography" width="200">
-      <img src="https://source.unsplash.com/400x300/?monochrome,photography" width="200">
-    </div>
-    """
-    components.html(html_code, height=320)
+        st.info("This image can be used with the AI prompt in your generator.")
